@@ -2,26 +2,25 @@ const parseQuery = require('./queryParser');
 const readCSV = require('./csvReader');
 
 async function executeSELECTQuery(query) {
-    try {
-        const { fields, table } = parseQuery(query);
-        const data = await readCSV(`${table}.csv`);
-        
-        // Filter the fields based on the query
-        return data.map(row => {
-            const filteredRow = {};
-            fields.forEach(field => {
-                if (row.hasOwnProperty(field)) {
-                    filteredRow[field] = row[field];
-                } else {
-                    // Handle missing fields
-                    filteredRow[field] = null; 
-                }
-            });
-            return filteredRow;
+    const { fields, table, whereClause } = parseQuery(query);
+    const data = await readCSV(`${table}.csv`);
+    
+    // Filtering based on WHERE clause
+    const filteredData = whereClause
+        ? data.filter(row => {
+            const [field, value] = whereClause.split('=').map(s => s.trim());
+            return row[field] === value;
+        })
+        : data;
+
+    // Selecting the specified fields
+    return filteredData.map(row => {
+        const selectedRow = {};
+        fields.forEach(field => {
+            selectedRow[field] = row[field];
         });
-    } catch (error) {
-        throw new Error(`Error executing SELECT query: ${error.message}`);
-    }
+        return selectedRow;
+    });
 }
 
 module.exports = executeSELECTQuery;
